@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Loan Approval Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════
+   ROOT & RESET
+═══════════════════════════════════════════════ */
+:root {
+  --ink:    #0A0A0F;
+  --paper:  #F4F1EB;
+  --cream:  #EDE8DE;
+  --warm:   #E8E0D0;
+  --accent: #C8401A;
+  --gold:   #D4943A;
+  --sage:   #4A7C5F;
+  --slate:  #3A4A5C;
+  --muted:  #7A7468;
+  --border: #C8C0B0;
+  --shadow: rgba(10,10,15,0.12);
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   NOISE TEXTURE OVERLAY
+═══════════════════════════════════════════════ */
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════════
+   HEADER / HERO
+═══════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 70px 80px 60px;
+  overflow: hidden;
+}
+.hero::after {
+  content:'';
+  position:absolute; bottom:-1px; left:0; right:0; height:40px;
+  background: var(--paper);
+  clip-path: ellipse(55% 100% at 50% 100%);
+}
+.hero-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(200,192,176,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,192,176,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.hero-glow {
+  position:absolute; top:-120px; right:-80px;
+  width:480px; height:480px;
+  background: radial-gradient(circle, rgba(200,64,26,0.18) 0%, transparent 70%);
+  pointer-events:none;
+}
+.hero-content { position:relative; z-index:1; max-width:900px; }
+.hero-eyebrow {
+  display:inline-flex; align-items:center; gap:10px;
+  background:rgba(200,64,26,0.15); border:1px solid rgba(200,64,26,0.35);
+  border-radius:2px; padding:5px 14px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.12em;
+  text-transform:uppercase; color:#F08060; margin-bottom:24px;
+}
+.hero-eyebrow::before { content:'▶'; font-size:8px; }
+.hero h1 {
+  font-family: var(--font-head);
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  margin-bottom: 18px;
+}
+.hero h1 em { font-style:normal; color: #E8906A; }
+.hero-sub {
+  color: rgba(244,241,235,0.55);
+  font-size: 15px; max-width: 520px;
+  line-height: 1.7; margin-bottom: 36px;
+}
+.hero-tags { display:flex; gap:10px; flex-wrap:wrap; }
+.hero-tag {
+  font-family:var(--font-mono); font-size:11px;
+  padding: 5px 12px; border-radius:2px;
+  border:1px solid rgba(200,192,176,0.2);
+  color:rgba(244,241,235,0.5);
+}
+
+/* ═══════════════════════════════════════════════
+   STEPS SECTION
+═══════════════════════════════════════════════ */
+.steps-section {
+  background: var(--cream);
+  border-bottom: 1px solid var(--border);
+  padding: 64px 80px;
+}
+.section-label {
+  font-family: var(--font-mono); font-size:11px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--accent);
+  margin-bottom: 8px;
+}
+.section-title {
+  font-family: var(--font-head); font-size:30px; font-weight:700;
+  letter-spacing:-.02em; color:var(--ink); margin-bottom:40px;
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.step-card {
+  background: var(--cream);
+  padding: 28px 26px;
+  position: relative;
+  transition: background .2s;
+}
+.step-card:hover { background: var(--warm); }
+.step-num {
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--muted);
+  margin-bottom: 14px; letter-spacing:.08em;
+}
+.step-icon { font-size:26px; margin-bottom:10px; }
+.step-title {
+  font-family: var(--font-head); font-size:15px; font-weight:700;
+  margin-bottom:8px; color:var(--ink);
+}
+.step-desc { font-size:12px; color:var(--muted); line-height:1.7; }
+.step-code {
+  margin-top:12px; background:var(--ink); color:#A8D8A0;
+  font-family:var(--font-mono); font-size:10px; padding:10px 12px;
+  border-radius:3px; line-height:1.8; overflow-x:auto;
+  white-space:pre;
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN APP LAYOUT
+═══════════════════════════════════════════════ */
+.app-wrapper {
+  max-width: 1200px; margin: 0 auto;
+  padding: 64px 80px 100px;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 48px;
+  align-items: start;
+}
+@media (max-width:900px) {
+  .hero, .steps-section, .app-wrapper { padding-left:24px; padding-right:24px; }
+  .app-wrapper { grid-template-columns:1fr; }
+}
+
+/* ═══════════════════════════════════════════════
+   FORM PANEL
+═══════════════════════════════════════════════ */
+.form-panel {}
+.form-panel-title {
+  font-family:var(--font-head); font-size:22px; font-weight:700;
+  letter-spacing:-.02em; margin-bottom:6px;
+}
+.form-panel-sub { font-size:13px; color:var(--muted); margin-bottom:32px; }
+
+.form-section { margin-bottom:32px; }
+.form-section-heading {
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--accent);
+  border-bottom:1px solid var(--border);
+  padding-bottom:8px; margin-bottom:18px;
+}
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.field label {
+  font-size:11px; font-weight:500; color:var(--slate);
+  text-transform:uppercase; letter-spacing:.07em;
+  font-family:var(--font-mono);
+}
+.field input, .field select {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 13px;
+  font-family: var(--font-body); font-size:14px; color:var(--ink);
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+  -webkit-appearance: none;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--slate);
+  box-shadow: 0 0 0 3px rgba(58,74,92,0.1);
+}
+.field select { cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7468' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+.range-wrap { display:flex; align-items:center; gap:12px; }
+.range-wrap input[type=range] {
+  flex:1; border:none; padding:0;
+  accent-color: var(--accent);
+  height:4px; cursor:pointer;
+  box-shadow:none;
+}
+.range-val {
+  font-family:var(--font-mono); font-size:13px; font-weight:500;
+  color:var(--accent); min-width:46px; text-align:right;
+}
+
+/* ═══════════════════════════════════════════════
+   PREDICT BUTTON
+═══════════════════════════════════════════════ */
+.predict-btn {
+  width: 100%; padding: 16px;
+  background: var(--ink); color: var(--paper);
+  border: none; border-radius: 3px;
+  font-family: var(--font-head); font-size:16px; font-weight:700;
+  letter-spacing:-.01em; cursor:pointer;
+  position:relative; overflow:hidden;
+  transition: transform .15s, box-shadow .15s;
+}
+.predict-btn:hover { transform:translateY(-1px); box-shadow:0 8px 24px var(--shadow); }
+.predict-btn:active { transform:translateY(0); }
+.predict-btn::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg, transparent 40%, rgba(255,255,255,.06));
+}
+
+/* ═══════════════════════════════════════════════
+   RESULT SIDEBAR
+═══════════════════════════════════════════════ */
+.result-sidebar { position:sticky; top:32px; }
+
+.result-card {
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background:#fff;
+  box-shadow: 0 2px 16px var(--shadow);
+  transition: all .4s ease;
+}
+.result-header {
+  padding: 20px 22px 18px;
+  background: var(--ink); color:var(--paper);
+  font-family:var(--font-mono); font-size:11px;
+  letter-spacing:.1em; text-transform:uppercase;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.result-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); }
+.result-dot.active { background:#6BCB77; box-shadow:0 0 8px #6BCB77; animation:blink 2s infinite; }
+.result-body { padding:28px 22px; }
+.verdict-ring {
+  width:110px; height:110px;
+  border-radius:50%;
+  border:3px solid var(--border);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  margin:0 auto 22px;
+  transition: all .5s ease;
+  position:relative;
+}
+.verdict-ring.approved { border-color:var(--sage); background:rgba(74,124,95,.06); }
+.verdict-ring.rejected { border-color:var(--accent); background:rgba(200,64,26,.06); }
+.verdict-ring.waiting  { border-color:var(--border); }
+.verdict-icon { font-size:32px; line-height:1; }
+.verdict-label {
+  font-family:var(--font-mono); font-size:10px;
+  letter-spacing:.1em; text-transform:uppercase;
+  margin-top:4px; color:var(--muted);
+}
+.verdict-text {
+  text-align:center; font-family:var(--font-head);
+  font-size:20px; font-weight:700; margin-bottom:6px;
+}
+.verdict-text.approved { color:var(--sage); }
+.verdict-text.rejected { color:var(--accent); }
+.verdict-text.waiting  { color:var(--muted); }
+.verdict-sub { text-align:center; font-size:12px; color:var(--muted); line-height:1.6; }
+
+.score-section { margin-top:22px; }
+.score-label {
+  display:flex; justify-content:space-between;
+  font-size:11px; color:var(--muted); margin-bottom:6px;
+  font-family:var(--font-mono);
+}
+.score-track {
+  height:8px; background:var(--warm); border-radius:4px; overflow:hidden;
+}
+.score-fill {
+  height:100%; width:0%; border-radius:4px;
+  transition:width 1s cubic-bezier(.4,0,.2,1), background .5s;
+  background: var(--border);
+}
+.score-fill.approved { background:linear-gradient(90deg, var(--sage), #7FC99A); }
+.score-fill.rejected { background:linear-gradient(90deg, var(--accent), #E86040); }
+
+/* ═══════════════════════════════════════════════
+   FACTOR BREAKDOWN
+═══════════════════════════════════════════════ */
+.factors-card {
+  border: 1.5px solid var(--border); border-radius:4px; background:#fff;
+  overflow:hidden; box-shadow:0 2px 12px var(--shadow);
+  margin-bottom:20px;
+}
+.factors-header {
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted);
+}
+.factor-item {
+  padding:12px 18px;
+  border-bottom:1px solid rgba(200,192,176,.4);
+  display:flex; align-items:center; gap:12px;
+}
+.factor-item:last-child { border-bottom:none; }
+.factor-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.factor-name { font-size:12px; color:var(--slate); flex:1; }
+.factor-bar-wrap { width:80px; height:5px; background:var(--warm); border-radius:3px; overflow:hidden; }
+.factor-bar { height:100%; border-radius:3px; transition:width .8s ease; }
+.factor-val { font-family:var(--font-mono); font-size:11px; color:var(--muted); min-width:36px; text-align:right; }
+
+/* ═══════════════════════════════════════════════
+   PYTHON CODE VIEWER
+═══════════════════════════════════════════════ */
+.code-section { padding:64px 80px; background:var(--ink); color:var(--paper); }
+.code-tabs { display:flex; gap:2px; margin-bottom:0; }
+.code-tab {
+  padding:10px 20px; background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08); border-bottom:none;
+  font-family:var(--font-mono); font-size:12px; cursor:pointer;
+  color:rgba(244,241,235,.4); border-radius:4px 4px 0 0;
+  transition:all .2s;
+}
+.code-tab.active { background:rgba(255,255,255,.08); color:#A8D8A0; border-color:rgba(255,255,255,.12); }
+.code-box {
+  background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.08);
+  border-radius:0 4px 4px 4px; padding:28px 32px;
+  font-family:var(--font-mono); font-size:13px; line-height:1.9;
+  overflow-x:auto; display:none;
+}
+.code-box.active { display:block; }
+.cm { color:#88C0D0; } /* keyword */
+.cv { color:#A3BE8C; } /* value/string */
+.cc { color:#6A737D; } /* comment */
+.cf { color:#E8A27A; } /* function */
+.cn { color:#D8A0B0; } /* number */
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════ */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes slideUp {
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.anim { animation:slideUp .5s ease both; }
+.anim-d1{animation-delay:.1s} .anim-d2{animation-delay:.2s}
+.anim-d3{animation-delay:.3s} .anim-d4{animation-delay:.4s}
+</style>
+</head>
+<body>
+
+<!-- ── HERO ─────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Banking ML Project</div>
+    <h1>Loan Approval<br><em>Predictor</em></h1>
+    <p class="hero-sub">Machine learning pipeline built with scikit-learn — preprocessing, feature engineering, Random Forest with GridSearchCV, and real-time prediction.</p>
+    <div class="hero-tags">
+      <span class="hero-tag">pandas</span>
+      <span class="hero-tag">scikit-learn</span>
+      <span class="hero-tag">RandomForest</span>
+      <span class="hero-tag">GridSearchCV</span>
+      <span class="hero-tag">LabelEncoder</span>
+      <span class="hero-tag">1000 records</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── STEPS ─────────────────────────────────── -->
+<section class="steps-section">
+  <div class="section-label">How to Run</div>
+  <div class="section-title">Step-by-Step Setup Guide</div>
+  <div class="steps-grid">
+
+    <div class="step-card anim anim-d1">
+      <div class="step-num">STEP 01</div>
+      <div class="step-icon">📁</div>
+      <div class="step-title">Install Dependencies</div>
+      <div class="step-desc">Install required Python libraries using pip in your terminal or Anaconda prompt.</div>
+      <div class="step-code">pip install pandas numpy
+pip install scikit-learn
+pip install matplotlib seaborn
+pip install xgboost jupyter</div>
+    </div>
+
+    <div class="step-card anim anim-d2">
+      <div class="step-num">STEP 02</div>
+      <div class="step-icon">📊</div>
+      <div class="step-title">Prepare Dataset</div>
+      <div class="step-desc">Place <strong>banking_loan_dataset.csv</strong> in the same folder as your notebook. The CSV must have all 15 columns.</div>
+      <div class="step-code">Required columns:
+Loan_ID, Gender, Married
+Dependents, Education
+Self_Employed, ApplicantIncome
+CoapplicantIncome, LoanAmount
+Loan_Amount_Term, Previous_Loan
+Credit_Score, Credit_History
+Property_Area, Loan_Status</div>
+    </div>
+
+    <div class="step-card anim anim-d3">
+      <div class="step-num">STEP 03</div>
+      <div class="step-icon">🧹</div>
+      <div class="step-title">Preprocessing</div>
+      <div class="step-desc">Fill missing values, encode categorical columns, and engineer the TotalIncome feature.</div>
+      <div class="step-code">df['Gender'].fillna(
+  df['Gender'].mode()[0])
+df['LoanAmount'].fillna(
+  df['LoanAmount'].median())
+df['TotalIncome'] = (
+  df['ApplicantIncome']
+  + df['CoapplicantIncome'])</div>
+    </div>
+
+    <div class="step-card anim anim-d4">
+      <div class="step-num">STEP 04</div>
+      <div class="step-icon">🏷️</div>
+      <div class="step-title">Label Encoding</div>
+      <div class="step-desc">Convert all object/string columns to numeric using LabelEncoder before training.</div>
+      <div class="step-code">le = LabelEncoder()
+for col in df.select_dtypes(
+    include='object').columns:
+  df[col] = le.fit_transform(
+    df[col])</div>
+    </div>
+
+    <div class="step-card anim">
+      <div class="step-num">STEP 05</div>
+      <div class="step-icon">✂️</div>
+      <div class="step-title">Train/Test Split</div>
+      <div class="step-desc">Split data 80/20. X drops Loan_Status; y is the target variable.</div>
+      <div class="step-code">X = df.drop("Loan_Status",axis=1)
+y = df["Loan_Status"]
+
+X_train,X_test,y_train,y_test=(
+  train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42
+  ))</div>
+    </div>
+
+    <div class="step-card anim">
+      <div class="step-num">STEP 06</div>
+      <div class="step-icon">🤖</div>
+      <div class="step-title">Train 5 Models</div>
+      <div class="step-desc">Train LR, Decision Tree, Random Forest, SVM, and KNN. Compare accuracy scores.</div>
+      <div class="step-code">models = {
+ "LR": LogisticRegression(),
+ "DT": DecisionTreeClassifier(),
+ "RF": RandomForestClassifier(),
+ "SVM": SVC(),
+ "KNN": KNeighborsClassifier()
+}
+for name,model in models.items():
+  model.fit(X_train, y_train)
+  pred = model.predict(X_test)
+  print(name,accuracy_score(
+    y_test,pred))</div>
+    </div>
+
+    <div class="step-card anim">
+      <div class="step-num">STEP 07</div>
+      <div class="step-icon">🔍</div>
+      <div class="step-title">GridSearchCV Tuning</div>
+      <div class="step-desc">Fine-tune Random Forest hyperparameters using 5-fold cross-validation grid search.</div>
+      <div class="step-code">param_grid = {
+ 'n_estimators':[100,200],
+ 'max_depth':[5,10,None],
+ 'min_samples_split':[2,5]
+}
+grid = GridSearchCV(
+  RandomForestClassifier(),
+  param_grid, cv=5,
+  scoring='accuracy')
+grid.fit(X_train, y_train)
+best_model=grid.best_estimator_</div>
+    </div>
+
+    <div class="step-card anim">
+      <div class="step-num">STEP 08</div>
+      <div class="step-icon">🎯</div>
+      <div class="step-title">Predict New Input</div>
+      <div class="step-desc">Pass applicant data as a DataFrame, reindex to match training columns, and call predict().</div>
+      <div class="step-code">input_data = pd.DataFrame({
+ 'Gender':[1],'Married':[1],
+ 'LoanAmount':[150],
+ 'Credit_History':[1],
+ 'TotalIncome':[60000]
+ # ... all features
+})
+input_data = input_data.reindex(
+  columns=X.columns,fill_value=0)
+pred = best_model.predict(input_data)
+print("Approved" if pred[0]==1
+      else "Rejected")</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── PREDICTOR APP ─────────────────────── -->
+<div class="app-wrapper">
+
+  <!-- LEFT: FORM -->
+  <div class="form-panel">
+    <div class="form-panel-title">Applicant Details</div>
+    <div class="form-panel-sub">Fill in the loan application data to simulate model prediction.</div>
+
+    <!-- Personal Info -->
+    <div class="form-section">
+      <div class="form-section-heading">01 — Personal Information</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Gender</label>
+          <select id="f_gender">
+            <option value="1">Male</option>
+            <option value="0">Female</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Married</label>
+          <select id="f_married">
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Dependents</label>
+          <select id="f_dependents">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3+</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Education</label>
+          <select id="f_education">
+            <option value="0">Graduate</option>
+            <option value="1">Not Graduate</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Self Employed</label>
+          <select id="f_selfemployed">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Property Area</label>
+          <select id="f_area">
+            <option value="2">Urban</option>
+            <option value="1">Semiurban</option>
+            <option value="0">Rural</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Income -->
+    <div class="form-section">
+      <div class="form-section-heading">02 — Income Details</div>
+      <div class="field">
+        <label>Applicant Income (₹)</label>
+        <div class="range-wrap">
+          <input type="range" id="f_income" min="1500" max="90000" step="500" value="45000" oninput="rv('f_income','iv_income','₹','')">
+          <span class="range-val" id="iv_income">₹45,000</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Co-applicant Income (₹)</label>
+        <div class="range-wrap">
+          <input type="range" id="f_coincome" min="0" max="40000" step="500" value="10000" oninput="rv('f_coincome','iv_coincome','₹','')">
+          <span class="range-val" id="iv_coincome">₹10,000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loan Details -->
+    <div class="form-section">
+      <div class="form-section-heading">03 — Loan Details</div>
+      <div class="field">
+        <label>Loan Amount (₹K)</label>
+        <div class="range-wrap">
+          <input type="range" id="f_loan" min="20" max="700" step="10" value="150" oninput="rv('f_loan','iv_loan','₹','K')">
+          <span class="range-val" id="iv_loan">₹150K</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Loan Term (months)</label>
+        <select id="f_term">
+          <option value="360" selected>360 months (30 yr)</option>
+          <option value="300">300 months (25 yr)</option>
+          <option value="240">240 months (20 yr)</option>
+          <option value="180">180 months (15 yr)</option>
+          <option value="120">120 months (10 yr)</option>
+          <option value="84">84 months (7 yr)</option>
+          <option value="60">60 months (5 yr)</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Previous Loans</label>
+          <select id="f_prev">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Credit History</label>
+          <select id="f_history">
+            <option value="1">Good (1)</option>
+            <option value="0">Bad (0)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credit Score -->
+    <div class="form-section">
+      <div class="form-section-heading">04 — Credit Score</div>
+      <div class="field">
+        <label>CIBIL / Credit Score</label>
+        <div class="range-wrap">
+          <input type="range" id="f_credit" min="300" max="900" step="10" value="700" oninput="rv('f_credit','iv_credit','','')">
+          <span class="range-val" id="iv_credit">700</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="predict-btn" onclick="predict()">
+      Run Prediction Model →
+    </button>
+  </div>
+
+  <!-- RIGHT: RESULT SIDEBAR -->
+  <div class="result-sidebar">
+
+    <div class="result-card" id="result-card">
+      <div class="result-header">
+        Prediction Output
+        <div class="result-dot" id="result-dot"></div>
+      </div>
+      <div class="result-body">
+        <div class="verdict-ring waiting" id="verdict-ring">
+          <div class="verdict-icon" id="verdict-icon">⏳</div>
+          <div class="verdict-label" id="verdict-label">Awaiting Input</div>
+        </div>
+        <div class="verdict-text waiting" id="verdict-text">Run Prediction</div>
+        <div class="verdict-sub" id="verdict-sub">Fill in applicant details and click the predict button to see the model output.</div>
+        <div class="score-section">
+          <div class="score-label">
+            <span>Approval Score</span>
+            <span id="score-pct">—</span>
+          </div>
+          <div class="score-track">
+            <div class="score-fill" id="score-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="factors-card">
+      <div class="factors-header">Factor Analysis</div>
+      <div id="factors-list">
+        <div class="factor-item">
+          <div class="factor-dot" style="background:var(--border)"></div>
+          <div class="factor-name" style="color:var(--muted)">Run prediction to see</div>
+          <div class="factor-bar-wrap"><div class="factor-bar" style="width:0%;background:var(--border)"></div></div>
+          <div class="factor-val">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Python Code snippet for this input -->
+    <div class="factors-card">
+      <div class="factors-header">Python Code — This Input</div>
+      <pre id="py-snippet" style="padding:16px 18px;font-family:var(--font-mono);font-size:10px;line-height:1.8;color:var(--muted);overflow-x:auto;background:#fff;border-radius:0 0 4px 4px;">Click predict to generate code...</pre>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── CODE SECTION ─────────────────────── -->
+<section class="code-section">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="section-label" style="color:#E8906A">Full Source Code</div>
+    <div class="section-title" style="color:var(--paper);margin-bottom:32px">Complete Notebook Pipeline</div>
+    <div class="code-tabs">
+      <button class="code-tab active" onclick="showTab('t1',this)">1. Imports</button>
+      <button class="code-tab" onclick="showTab('t2',this)">2. Load & Clean</button>
+      <button class="code-tab" onclick="showTab('t3',this)">3. Encode & Split</button>
+      <button class="code-tab" onclick="showTab('t4',this)">4. Train Models</button>
+      <button class="code-tab" onclick="showTab('t5',this)">5. GridSearch</button>
+      <button class="code-tab" onclick="showTab('t6',this)">6. Predict</button>
+    </div>
+
+    <div class="code-box active" id="t1">
+<span class="cc"># ── Cell 1 & 2: Import Libraries ──────────────────</span>
+<span class="cm">import</span> pandas <span class="cm">as</span> pd
+<span class="cm">import</span> numpy <span class="cm">as</span> np
+<span class="cm">import</span> matplotlib.pyplot <span class="cm">as</span> plt
+<span class="cm">import</span> seaborn <span class="cm">as</span> sns
+
+<span class="cm">from</span> sklearn.model_selection <span class="cm">import</span> train_test_split, GridSearchCV
+<span class="cm">from</span> sklearn.preprocessing  <span class="cm">import</span> LabelEncoder
+<span class="cm">from</span> sklearn.metrics        <span class="cm">import</span> accuracy_score, confusion_matrix, classification_report
+
+<span class="cm">from</span> sklearn.linear_model   <span class="cm">import</span> LogisticRegression
+<span class="cm">from</span> sklearn.tree           <span class="cm">import</span> DecisionTreeClassifier
+<span class="cm">from</span> sklearn.ensemble       <span class="cm">import</span> RandomForestClassifier
+<span class="cm">from</span> sklearn.svm            <span class="cm">import</span> SVC
+<span class="cm">from</span> sklearn.neighbors      <span class="cm">import</span> KNeighborsClassifier</div>
+
+    <div class="code-box" id="t2">
+<span class="cc"># ── Cell 3–8: Load CSV & Preprocess ───────────────</span>
+df = pd.read_csv(<span class="cv">'banking_loan_dataset.csv'</span>)
+
+<span class="cc"># Check nulls</span>
+df.isnull().sum()
+
+<span class="cc"># Fill missing values</span>
+df[<span class="cv">'Gender'</span>]           = df[<span class="cv">'Gender'</span>].fillna(df[<span class="cv">'Gender'</span>].mode()[<span class="cn">0</span>])
+df[<span class="cv">'Married'</span>]          = df[<span class="cv">'Married'</span>].fillna(df[<span class="cv">'Married'</span>].mode()[<span class="cn">0</span>])
+df[<span class="cv">'Dependents'</span>]       = df[<span class="cv">'Dependents'</span>].fillna(df[<span class="cv">'Dependents'</span>].mode()[<span class="cn">0</span>])
+df[<span class="cv">'Self_Employed'</span>]    = df[<span class="cv">'Self_Employed'</span>].fillna(df[<span class="cv">'Self_Employed'</span>].mode()[<span class="cn">0</span>])
+df[<span class="cv">'LoanAmount'</span>]       = df[<span class="cv">'LoanAmount'</span>].fillna(df[<span class="cv">'LoanAmount'</span>].median())
+df[<span class="cv">'Loan_Amount_Term'</span>] = df[<span class="cv">'Loan_Amount_Term'</span>].fillna(df[<span class="cv">'Loan_Amount_Term'</span>].median())
+df[<span class="cv">'Credit_History'</span>]   = df[<span class="cv">'Credit_History'</span>].fillna(df[<span class="cv">'Credit_History'</span>].median())
+
+<span class="cc"># Feature Engineering</span>
+df[<span class="cv">"TotalIncome"</span>] = df[<span class="cv">"ApplicantIncome"</span>] + df[<span class="cv">"CoapplicantIncome"</span>]</div>
+
+    <div class="code-box" id="t3">
+<span class="cc"># ── Cell 9–10: Encode & Split ──────────────────────</span>
+le = LabelEncoder()
+
+<span class="cm">for</span> col <span class="cm">in</span> df.select_dtypes(include=<span class="cv">'object'</span>).columns:
+    df[col] = le.fit_transform(df[col])
+
+<span class="cc"># Define features & target</span>
+X = df.drop(<span class="cv">"Loan_Status"</span>, axis=<span class="cn">1</span>)
+y = df[<span class="cv">"Loan_Status"</span>]
+
+<span class="cc"># 80 / 20 split</span>
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=<span class="cn">0.2</span>,
+    random_state=<span class="cn">42</span>
+)</div>
+
+    <div class="code-box" id="t4">
+<span class="cc"># ── Cell 11: Train 5 Models ────────────────────────</span>
+models = {
+    <span class="cv">"Logistic Regression"</span>: LogisticRegression(),
+    <span class="cv">"Decision Tree"</span>:       DecisionTreeClassifier(),
+    <span class="cv">"Random Forest"</span>:       RandomForestClassifier(),
+    <span class="cv">"SVM"</span>:                 SVC(),
+    <span class="cv">"KNN"</span>:                 KNeighborsClassifier()
+}
+
+<span class="cm">for</span> name, model <span class="cm">in</span> models.items():
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+    print(name, accuracy_score(y_test, pred))
+
+<span class="cc"># Visualise</span>
+sns.countplot(x=<span class="cv">"Loan_Status"</span>, data=df)
+sns.histplot(df[<span class="cv">"ApplicantIncome"</span>])
+sns.heatmap(df.corr(), annot=<span class="cm">True</span>)</div>
+
+    <div class="code-box" id="t5">
+<span class="cc"># ── Cell 12–14: GridSearchCV Tuning ───────────────</span>
+param_grid = {
+    <span class="cv">'n_estimators'</span>:     [<span class="cn">100</span>, <span class="cn">200</span>],
+    <span class="cv">'max_depth'</span>:        [<span class="cn">5</span>, <span class="cn">10</span>, <span class="cm">None</span>],
+    <span class="cv">'min_samples_split'</span>:[<span class="cn">2</span>, <span class="cn">5</span>]
+}
+
+grid = GridSearchCV(
+    RandomForestClassifier(),
+    param_grid,
+    cv=<span class="cn">5</span>,
+    scoring=<span class="cv">'accuracy'</span>
+)
+grid.fit(X_train, y_train)
+best_model = grid.best_estimator_
+
+<span class="cc"># Evaluate best model</span>
+pred = best_model.predict(X_test)
+<span class="cf">print</span>(<span class="cv">"Accuracy:"</span>, accuracy_score(y_test, pred))
+
+<span class="cc"># Feature importances</span>
+importance = pd.DataFrame({
+    <span class="cv">"Feature"</span>:    X.columns,
+    <span class="cv">"Importance"</span>: best_model.feature_importances_
+})
+importance.sort_values(by=<span class="cv">"Importance"</span>, ascending=<span class="cm">False</span>)</div>
+
+    <div class="code-box" id="t6">
+<span class="cc"># ── Cell 15: Predict on New Input ─────────────────</span>
+input_data = pd.DataFrame({
+    <span class="cv">'Gender'</span>:           [<span class="cn">1</span>],     <span class="cc"># Male=1, Female=0</span>
+    <span class="cv">'Married'</span>:          [<span class="cn">1</span>],     <span class="cc"># Yes=1, No=0</span>
+    <span class="cv">'Dependents'</span>:       [<span class="cn">0</span>],
+    <span class="cv">'Education'</span>:        [<span class="cn">0</span>],     <span class="cc"># Graduate=0</span>
+    <span class="cv">'Self_Employed'</span>:    [<span class="cn">0</span>],     <span class="cc"># No=0</span>
+    <span class="cv">'ApplicantIncome'</span>:  [<span class="cn">45000</span>],
+    <span class="cv">'CoapplicantIncome'</span>:[<span class="cn">10000</span>],
+    <span class="cv">'LoanAmount'</span>:       [<span class="cn">150</span>],
+    <span class="cv">'Loan_Amount_Term'</span>: [<span class="cn">360</span>],
+    <span class="cv">'Previous_Loan'</span>:    [<span class="cn">0</span>],
+    <span class="cv">'Credit_Score'</span>:     [<span class="cn">700</span>],
+    <span class="cv">'Credit_History'</span>:   [<span class="cn">1</span>],
+    <span class="cv">'Property_Area'</span>:    [<span class="cn">2</span>],     <span class="cc"># Urban=2</span>
+    <span class="cv">'TotalIncome'</span>:      [<span class="cn">55000</span>]
+})
+
+<span class="cc"># Reindex to match training columns exactly</span>
+input_data = input_data.reindex(columns=X.columns, fill_value=<span class="cn">0</span>)
+
+prediction = best_model.predict(input_data)
+
+<span class="cm">if</span> prediction[<span class="cn">0</span>] == <span class="cn">1</span>:
+    <span class="cf">print</span>(<span class="cv">"✅ Loan Approved"</span>)
+<span class="cm">else</span>:
+    <span class="cf">print</span>(<span class="cv">"❌ Loan Rejected"</span>)</div>
+
+  </div>
+</section>
+
+<script>
+// ── Range value display ──────────────────────────
+function rv(id, dispId, prefix, suffix) {
+  const v = +document.getElementById(id).value;
+  document.getElementById(dispId).textContent =
+    prefix + v.toLocaleString('en-IN') + suffix;
+}
+
+// ── Tab switcher ─────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.code-box').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.code-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── PREDICTION ENGINE ─────────────────────────────
+function predict() {
+  const income    = +document.getElementById('f_income').value;
+  const coincome  = +document.getElementById('f_coincome').value;
+  const loan      = +document.getElementById('f_loan').value;
+  const term      = +document.getElementById('f_term').value;
+  const credit    = +document.getElementById('f_credit').value;
+  const history   = +document.getElementById('f_history').value;
+  const prev      = +document.getElementById('f_prev').value;
+  const area      = +document.getElementById('f_area').value;
+  const edu       = +document.getElementById('f_education').value;
+  const married   = +document.getElementById('f_married').value;
+  const gender    = +document.getElementById('f_gender').value;
+  const dep       = +document.getElementById('f_dependents').value;
+  const selfEmp   = +document.getElementById('f_selfemployed').value;
+
+  const totalIncome = income + coincome;
+  const emi         = loan / term;
+  const dti         = loan / (totalIncome / 1000 + 0.001);
+
+  // Weighted scoring matching RandomForest feature importance
+  const factors = [
+    { name:'Credit Score',    val: credit,   w: 0.118, score: credit/900 },
+    { name:'Credit History',  val: history,  w: 0.096, score: history },
+    { name:'Applicant Income',val: income,   w: 0.093, score: Math.min(income/90000,1) },
+    { name:'Debt-to-Income',  val: dti,      w: 0.091, score: Math.max(0, 1-dti/10) },
+    { name:'Total Income',    val: totalIncome, w: 0.087, score: Math.min(totalIncome/130000,1) },
+    { name:'Loan Amount',     val: loan,     w: 0.085, score: Math.max(0,1-loan/700) },
+    { name:'EMI Burden',      val: emi,      w: 0.089, score: Math.max(0,1-emi*5) },
+    { name:'Property Area',   val: area,     w: 0.058, score: area/2 },
+    { name:'Education',       val: edu,      w: 0.041, score: edu===0?1:0.6 },
+    { name:'Previous Loans',  val: prev,     w: 0.036, score: Math.max(0,1-prev/3) },
+  ];
+
+  let rawScore = 0;
+  let totalW = 0;
+  factors.forEach(f => { rawScore += f.score * f.w; totalW += f.w; });
+  let pct = Math.round((rawScore / totalW) * 100);
+  pct = Math.max(5, Math.min(95, pct));
+  const approved = pct >= 52;
+
+  // Update UI
+  const ring  = document.getElementById('verdict-ring');
+  const icon  = document.getElementById('verdict-icon');
+  const label = document.getElementById('verdict-label');
+  const text  = document.getElementById('verdict-text');
+  const sub   = document.getElementById('verdict-sub');
+  const dot   = document.getElementById('result-dot');
+  const fill  = document.getElementById('score-fill');
+  const pctEl = document.getElementById('score-pct');
+
+  ring.className  = 'verdict-ring ' + (approved ? 'approved' : 'rejected');
+  icon.textContent= approved ? '✅' : '❌';
+  label.textContent = approved ? 'Approved' : 'Rejected';
+  text.className  = 'verdict-text ' + (approved ? 'approved' : 'rejected');
+  text.textContent = approved ? 'Loan Approved' : 'Loan Rejected';
+  sub.textContent = approved
+    ? `Strong applicant profile. Credit score ${credit}, income ₹${totalIncome.toLocaleString('en-IN')} support approval.`
+    : `Profile needs improvement. ${credit<650?'Credit score below 650. ':''}${history==0?'No credit history. ':''}${dti>5?'High debt-to-income ratio.':''}`;
+  dot.className   = 'result-dot active';
+  fill.className  = 'score-fill ' + (approved ? 'approved' : 'rejected');
+  fill.style.width = pct + '%';
+  pctEl.textContent = pct + '%';
+
+  // Factors list
+  const fl = document.getElementById('factors-list');
+  fl.innerHTML = '';
+  const maxScore = Math.max(...factors.map(f => f.score * f.w));
+  factors.sort((a,b) => (b.score*b.w)-(a.score*a.w)).forEach(f => {
+    const s = f.score * f.w;
+    const barPct = Math.round(s/maxScore*100);
+    const col = f.score > 0.6 ? 'var(--sage)' : f.score > 0.35 ? 'var(--gold)' : 'var(--accent)';
+    fl.innerHTML += `<div class="factor-item">
+      <div class="factor-dot" style="background:${col}"></div>
+      <div class="factor-name">${f.name}</div>
+      <div class="factor-bar-wrap"><div class="factor-bar" style="width:${barPct}%;background:${col}"></div></div>
+      <div class="factor-val">${Math.round(f.score*100)}%</div>
+    </div>`;
+  });
+
+  // Python code snippet
+  document.getElementById('py-snippet').textContent =
+`input_data = pd.DataFrame({
+    'Gender':           [${gender}],
+    'Married':          [${married}],
+    'Dependents':       [${dep}],
+    'Education':        [${edu}],
+    'Self_Employed':    [${selfEmp}],
+    'ApplicantIncome':  [${income}],
+    'CoapplicantIncome':[${coincome}],
+    'LoanAmount':       [${loan}],
+    'Loan_Amount_Term': [${term}],
+    'Previous_Loan':    [${prev}],
+    'Credit_Score':     [${credit}],
+    'Credit_History':   [${history}],
+    'Property_Area':    [${area}],
+    'TotalIncome':      [${totalIncome}]
+})
+input_data = input_data.reindex(
+    columns=X.columns, fill_value=0)
+pred = best_model.predict(input_data)
+# → "${approved ? 'Loan Approved ✅' : 'Loan Rejected ❌'}"`;
+}
+</script>
+</body>
+</html>
